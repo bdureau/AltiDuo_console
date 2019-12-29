@@ -152,7 +152,7 @@ void setup()
   //Serial.begin(BAUD_RATE);
   SerialCom.begin(config.connectionSpeed);
 
-  
+  pinMode(PD0, INPUT_PULLUP);
   //Presure Sensor Initialisation
   // Note that BMP180 is compatible with the BMP085 library
   // Low res should work better at high speed
