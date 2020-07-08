@@ -244,7 +244,7 @@ void setup()
   }
   initialAltitude = (sum / 10.0);
   lastAltitude = 0;//initialAltitude;
-  liftoffAltitude = 20;
+  liftoffAltitude = config.liftOffAltitude; //20;
 
   
 

@@ -36,6 +36,10 @@ void defaultConfig()
   config.altimeterResolution = 0; //0 to 4 ie: from low resolution to high
   config.eepromSize=512;
   config.noContinuity = 0;
+  config.outPut4=3;
+  config.outPut4Delay=0;
+  config.liftOffAltitude=10;
+  config.batteryType=0;
   config.cksum=CheckSumConf(config);   
 }
 boolean readAltiConfig() {
@@ -120,11 +124,23 @@ void writeAltiConfig( char *p ) {
       config.altimeterResolution=atoi(str);
       break;
     case 18:
-      config.eepromSize =atoi(str);
+      config.eepromSize =atoi(str); // unused but left for compatibility
       break;
     case 19:
       config.noContinuity=atoi(str);
       break;
+    case 20:
+      config.outPut4=atoi(str); // unused but left for compatibility
+      break;  
+    case 21:
+      config.outPut4Delay=atol(str); // unused but left for compatibility
+      break;
+    case 22:
+      config.liftOffAltitude=atoi(str);  
+      break;  
+    case 23:
+      config.batteryType=atoi(str); 
+      break;    
     }
     i++;
 
@@ -212,6 +228,17 @@ void printAltiConfig()
   SerialCom.print(config.eepromSize);
   SerialCom.print(F(","));
   SerialCom.print(config.noContinuity);
+  //output4
+  SerialCom.print(config.outPut4);
+  SerialCom.print(F(","));
+   //output4 delay
+  SerialCom.print(config.outPut4Delay);
+  SerialCom.print(F(","));
+  //Lift off altitude
+  SerialCom.print(config.liftOffAltitude);
+  SerialCom.print(F(","));
+  //Battery type
+  SerialCom.print(config.batteryType);
   
   SerialCom.print(F(";\n"));
 

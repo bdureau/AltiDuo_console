@@ -59,21 +59,25 @@ struct ConfigStruct {
   int beepingMode;      // decide which way you want to report the altitude
   int outPut1;          // assign a function to each pyro
   int outPut2;
-  int outPut3;
-  int mainAltitude;     //deployment altitude for the main chute
-  int superSonicYesNo;  // if set to yes do not do any altitude measurement when altimeter starts
-  int outPut1Delay;      // delay output by x ms
+  int outPut3;                // unused but left for compatibility
+  int mainAltitude;           //deployment altitude for the main chute
+  int superSonicYesNo;        // if set to yes do not do any altitude measurement when altimeter starts
+  int outPut1Delay;           // delay output by x ms
   int outPut2Delay;
-  int outPut3Delay;
-  int beepingFrequency;  // this beeping frequency can be changed
+  int outPut3Delay;           // unused but left for compatibility
+  int beepingFrequency;       // this beeping frequency can be changed
   int nbrOfMeasuresForApogee; //how many measure to decide that apogee has been reached
-  int endRecordAltitude;  // stop recording when landing define under which altitude we are not recording
-  int recordTemperature;  //decide if we want to record temperature
-  int superSonicDelay;   //nbr of ms during when we ignore any altitude measurements
-  long connectionSpeed;   //altimeter connection baudrate
-  int altimeterResolution; // BMP sensor resolution
-  int eepromSize;
-  int noContinuity;
+  int endRecordAltitude;      // stop recording when landing define under which altitude we are not recording
+  int recordTemperature;      //decide if we want to record temperature
+  int superSonicDelay;        //nbr of ms during when we ignore any altitude measurements
+  long connectionSpeed;       //altimeter connection baudrate
+  int altimeterResolution;    // BMP sensor resolution
+  int eepromSize;             // unused but left for compatibility
+  int noContinuity;           // Swith on or off continuity
+  int outPut4;                // unused but left for compatibility
+  int outPut4Delay;           // unused but left for compatibility
+  int liftOffAltitude;        //Lift Altitude in meters
+  int batteryType;            // 0= Unknown, 1= "2S (7.4 Volts)", 2 = "9 Volts",3 = "3S (11.1 Volts)
   int cksum;  
 };
 extern ConfigStruct config;
