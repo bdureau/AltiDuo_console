@@ -25,7 +25,7 @@
 //////////// do not change anything after unless you know what you are doing /////////////////////
 
 #define MAJOR_VERSION 1
-#define MINOR_VERSION 5
+#define MINOR_VERSION 7
 #define CONFIG_START 32
 
 
@@ -44,15 +44,19 @@
 
 //pyro out 1
 extern const int pyroOut1;
-extern int pinApogee;
+extern int pinApogee[2];
 //pyro out 2
 extern const int pyroOut2;
-extern int pinMain;
+extern int pinMain[2];
 
 extern int pinOut2;
 extern int pinOut1;
 
 extern int continuityPins[4];
+//pinLanding
+extern int pinLanding[2];
+//pinLiftOff
+extern int pinLiftOff[2];
 
 struct ConfigStruct {
   int unit;             //0 = meter 1 = feet
@@ -85,9 +89,10 @@ extern ConfigStruct config;
 extern void defaultConfig();
 extern boolean readAltiConfig();
 extern int getOutPin(int );
-extern void writeAltiConfig( char * );
+extern bool writeAltiConfig( char * );
 extern void printAltiConfig();
 extern void writeConfigStruc();
 extern bool CheckValideBaudRate(long);
 extern unsigned int CheckSumConf( ConfigStruct );
+extern unsigned int msgChk( char * buffer, long length );
 #endif
