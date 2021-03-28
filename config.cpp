@@ -2,19 +2,11 @@
 
 //pyro out 1
 const int pyroOut1 = 9;
-//int pinApogee = 9;
-int pinApogee[]={-1, -1};
+
 //pyro out 2
 const int pyroOut2 = 13;
-//int pinMain = 13;
-int pinMain[]= {-1, -1};
-int pinOut2 = -1;
-int pinOut1 = -1;
 int continuityPins[4];
-//pinLanding
-int pinLanding[]= {-1, -1};
-//PinLiftOff
-int pinLiftOff[]= {-1, -1};
+
 ConfigStruct config;
 //================================================================
 // read and write in the microcontroler eeprom

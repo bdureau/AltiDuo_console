@@ -5,7 +5,7 @@
 
 boolean noContinuity = false;
 //Our drogue has been ejected i.e: apogee has been detected
-extern boolean apogeeHasFired ;
+//extern boolean allApogeeHasFired ;
 
 boolean NoBeep = false;
 
@@ -13,11 +13,18 @@ const int pinSpeaker = 12;
 
 int beepingFrequency;
 
-VirtualDelay delay1, delay2, delay3;
+//VirtualDelay delay1, delay2, delay3;
 int lastPin = -1;
 int currentPinPos = 0;
 int currentPin = -1;
 int pos = -1;
+
+long tempo = 0;
+long startTempo = 0;
+long tempo2 = 0;
+long startTempo2 = 0 ;
+long bigdelay = 0;
+long savedDelay =0;
 
 /*void continuityCheck(int pin)
 {
@@ -185,12 +192,12 @@ void beepAltitudeNew( long value)
   }
 }
 
-void continuityCheckNew()
+/*void continuityCheckNew()
 {
   int val = 0;     // variable to store the read value
   // read the input pin to check the continuity if apogee has not fired
-  if (noContinuity == false)
-    if (apogeeHasFired == false )
+  if (!noContinuity)
+    if (!allApogeeFiredComplete )
     {
       if (lastPin == -1)
       {
@@ -277,4 +284,76 @@ void continuityCheckNew()
 
       }
     }
+}*/
+/*
+ * 
+ * continuityCheckAsync()
+ * This will check continuity on all altimeter outputs then wait for 10s and do it again
+ * long beep = no continuity
+ * short beep = continuity
+ */
+
+void continuityCheckAsync()
+{
+
+  int val = 0;     // variable to store the read value
+  if (!noContinuity && !allApogeeFiredComplete )
+  {
+    if ((millis() - savedDelay ) > bigdelay ) {
+      if (lastPin == -1)
+      {
+        currentPin = continuityPins[currentPinPos];
+        currentPinPos++;
+        if (currentPinPos > pos)
+        {
+          currentPinPos = 0;
+        }
+
+
+        lastPin = currentPin;
+
+        if (currentPin != -1) {
+          val = digitalRead(currentPin);
+          if (val == 0)
+          {
+            // no continuity long beep
+            tempo = 1500;
+          }
+          else {
+            //short beep
+            tempo = 300;
+          }
+
+          tone(pinSpeaker, beepingFrequency);
+          startTempo = millis();
+        }
+        else noTone(pinSpeaker);
+
+      }
+      else {
+        if ((millis() - startTempo   ) > tempo && tempo > 0) {
+          //Serial1.print("End tempo:");
+          //Serial1.println((millis() - startTempo ));
+
+          noTone(pinSpeaker);
+          tempo = 0;
+          tempo2 = 500;
+          startTempo2 = millis();
+        }
+        else {
+          if ((millis() - startTempo2  ) > tempo2 && tempo2 > 0) {
+            lastPin = -1;
+             if (currentPinPos == 0) {
+                // Then 10s delay
+                bigdelay = 10000;
+                savedDelay = millis();
+             }
+            tempo2 = 0;
+          }
+        }
+      }
+    }
+  }
+  else
+    noTone(pinSpeaker);
 }

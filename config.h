@@ -44,19 +44,11 @@
 
 //pyro out 1
 extern const int pyroOut1;
-extern int pinApogee[2];
+
 //pyro out 2
 extern const int pyroOut2;
-extern int pinMain[2];
-
-extern int pinOut2;
-extern int pinOut1;
 
 extern int continuityPins[4];
-//pinLanding
-extern int pinLanding[2];
-//pinLiftOff
-extern int pinLiftOff[2];
 
 struct ConfigStruct {
   int unit;             //0 = meter 1 = feet
