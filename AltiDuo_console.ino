@@ -26,7 +26,9 @@
   Major changes on  version 1.6
   Adding checksum
   Major changes on  version 1.7
-
+  Allow multiple outputs of the main type
+  allow events
+  major re-write
 */
 
 //altimeter configuration lib
@@ -58,7 +60,6 @@ boolean liftOff = false;
 unsigned long initialTime;
 
 boolean FastReading = false;
-boolean mainHasFired = false;
 
 //nbr of measures to do so that we are sure that apogee has been reached
 unsigned long measures = 5;
@@ -79,56 +80,20 @@ const int pinChannel2Continuity = 11;
 float FEET_IN_METER = 1;
 boolean canRecord = true;
 
-// to store all event
-boolean timerEvent1_enable = false;
-boolean timerEvent2_enable = false;
-boolean apogeeEvent_Enable = false;
-boolean mainEvent_Enable = false;
-boolean landingEvent_Enable = false;
-boolean liftOffEvent_Enable = false;
-// enable/disable output
-boolean out1Enable = true;
-boolean out2Enable = true;
-
-int apogeeDelay = 0;
-int mainDelay = 0;
-int out1Delay = 0;
-int out2Delay = 0;
-int landingDelay = 0;
-int liftOffDelay = 0;
-
 boolean Output1Fired = false;
 boolean Output2Fired = false;
 long lastTelemetry = 0;
 
 boolean exitRecording = false;
-boolean apogeeReadyToFire = false;
-boolean  mainReadyToFire = false;
-boolean landingReadyToFire = false;
-boolean  liftOffReadyToFire = false;
-unsigned long  apogeeStartTime = 0;
-unsigned long  mainStartTime = 0;
-unsigned long  landingStartTime = 0;
-unsigned long  liftOffStartTime = 0;
-boolean  ignoreAltiMeasure = false;
-
-boolean Event1Fired = false;
-boolean  Event2Fired = false;
-boolean  ApogeeFiredComplete = false;
-boolean MainFiredComplete = false;
-boolean  LandingFiredComplete = false;
-boolean  LiftOffFiredComplete = false;
-boolean  landingHasFired = false;
-boolean  liftOffHasFired = false;
-boolean  apogeeHasFired = false;
-//boolean  mainHasFired = false;
-
-// current file number that you are recording
-int currentFileNbr = 0;
+boolean allApogeeFiredComplete = false;
+boolean allMainFiredComplete = false;
+boolean allTimerFiredComplete = false;
+boolean allLiftOffFiredComplete = false;
+boolean allLandingFiredComplete = false;
+boolean allAltitudeFiredComplete = false;
 
 boolean telemetryEnable = false;
 
-void assignPyroOutputs();
 void MainMenu();
 
 double ReadAltitude()
@@ -138,44 +103,39 @@ double ReadAltitude()
 
 /*
 
-   initAlti()
+  ResetGlobalVar()
 
 */
-void initAlti() {
+void ResetGlobalVar() {
 
   exitRecording = false;
-  apogeeReadyToFire = false;
-  mainReadyToFire = false;
-  landingReadyToFire = false;
-  liftOffReadyToFire = false;
-  apogeeStartTime = 0;
-  mainStartTime = 0;
-  landingStartTime = 0;
-  liftOffStartTime = 0;
-  ignoreAltiMeasure = false;
 
-  Event1Fired = false;
-  Event2Fired = false;
-
-  ApogeeFiredComplete = false;
-  MainFiredComplete = false;
-  LandingFiredComplete = false;
-  LiftOffFiredComplete = false;
-  landingHasFired = false;
-  liftOffHasFired = false;
-  apogeeHasFired = false;
-  mainHasFired = false;
+  allApogeeFiredComplete = false;
+  allMainFiredComplete = false;
+  allTimerFiredComplete = false;
+  allLiftOffFiredComplete = false;
+  allLandingFiredComplete = false;
+  allAltitudeFiredComplete = false;
 
   liftOff = false;
   apogeeAltitude = 0;
   mainAltitude = 0;
 
-
   Output1Fired = false;
   Output2Fired = false;
+
+
   lastAltitude = 0;//initialAltitude;
-  out1Enable = true;
-  out2Enable = true;
+
+}
+/*
+
+   initAlti()
+
+*/
+void initAlti() {
+  ResetGlobalVar();
+
   // if the baud rate is invalid let's default it
   if (!CheckValideBaudRate(config.connectionSpeed))
   {
@@ -193,7 +153,20 @@ void initAlti() {
   // beepFrequency
   beepingFrequency = config.beepingFrequency;
 
-  assignPyroOutputs();
+  //number of measures to do to detect Apogee
+  measures = config.nbrOfMeasuresForApogee;
+
+  //check which pyro are enabled
+  pos = -1;
+
+  if (config.outPut1 != 3) {
+    pos++;
+    continuityPins[pos] = pinChannel1Continuity;
+  }
+  if (config.outPut2 != 3) {
+    pos++;
+    continuityPins[pos] = pinChannel2Continuity;
+  }
 }
 //================================================================
 // Start program
@@ -213,24 +186,7 @@ void setup()
     defaultConfig();
     writeConfigStruc();
   }
-  /*
-    // if the baud rate is invalid let's default it
-    if (!CheckValideBaudRate(config.connectionSpeed))
-    {
-      config.connectionSpeed = 38400;
-      writeConfigStruc();
-    }
 
-    // set main altitude (if in feet convert to metrics)
-    if (config.unit == 0)
-      FEET_IN_METER = 1;
-    else
-      FEET_IN_METER = 3.28084 ;
-
-    mainDeployAltitude = int(config.mainAltitude / FEET_IN_METER);
-    // beepFrequency
-    beepingFrequency = config.beepingFrequency;
-  */
   initAlti();
   // init Kalman filter
   KalmanInit();
@@ -250,11 +206,10 @@ void setup()
   bmp.begin( config.altimeterResolution);
 
   //our drogue has not been fired
-  apogeeHasFired = false;
-  mainHasFired = false;
+  //apogeeHasFired = false;
+  //mainHasFired = false;
 
   SerialCom.print(F("Start program\n"));
-  assignPyroOutputs();
 
   //SerialCom.print(F("Set outputs\n"));
   //Initialise the output pin
@@ -319,7 +274,7 @@ void setup()
   }
 
   //number of measures to do to detect Apogee
-  measures = config.nbrOfMeasuresForApogee;
+  //measures = config.nbrOfMeasuresForApogee;
 
   // let's do some dummy altitude reading
   // to initialise the Kalman filter
@@ -336,115 +291,12 @@ void setup()
   initialAltitude = (sum / 10.0);
   lastAltitude = 0;//initialAltitude;
   liftoffAltitude = config.liftOffAltitude; //20;
-
-
-
-
-  //check which pyro are enabled
-
-  if (out1Enable) {
-    pos++;
-    continuityPins[pos] = pinChannel1Continuity;
-  }
-  if (out2Enable) {
-    pos++;
-    continuityPins[pos] = pinChannel2Continuity;
-  }
-
-}
-void assignPyroOutputs()
-{
-  timerEvent1_enable = false;
-  timerEvent2_enable = false;
-  out1Delay = 0;
-  out2Delay = 0;
-
-  //pinMain = -1;
-  //pinApogee = -1;
-  pinOut1 = -1;
-  pinOut2 = -1;
-  for (int a = 0 ; a < 2 ; a++ ) {
-    pinLanding[a] = -1;
-    pinMain[a] = -1;
-    pinApogee[a] = -1;
-    pinLiftOff[a] = -1;
-  }
-
-  landingDelay = 0;
-  liftOffDelay = 0;
-  apogeeDelay = 0;
-  mainDelay = 0;
-  mainEvent_Enable = false;
-  apogeeEvent_Enable = false;
-  landingEvent_Enable = false;
-  liftOffEvent_Enable = false;
-
-  switch (config.outPut1)
-  {
-    case 0:
-      mainEvent_Enable = true;
-      mainDelay = config.outPut1Delay;
-      pinMain[0] = pyroOut1;
-      break;
-    case 1:
-      apogeeEvent_Enable = true;
-      apogeeDelay = config.outPut1Delay;
-      pinApogee[0] = pyroOut1;
-      break;
-    case 2:
-      timerEvent1_enable = true;
-      out1Delay = config.outPut1Delay;
-      pinOut1 = pyroOut1;
-      break;
-    case 4:
-      landingEvent_Enable = true;
-      landingDelay = config.outPut1Delay;
-      pinLanding[0] = pyroOut1;
-      break;
-    case 5:
-      liftOffEvent_Enable = true;
-      liftOffDelay = config.outPut1Delay;
-      pinLiftOff[0] = pyroOut1;
-      break;
-    default:
-      out1Enable = false;
-      break;
-  }
-
-  switch (config.outPut2)
-  {
-    case 0:
-      mainEvent_Enable = true;
-      pinMain[1] = pyroOut2;
-      mainDelay = config.outPut2Delay;
-      break;
-    case 1:
-      apogeeEvent_Enable = true;
-      pinApogee[1] = pyroOut2;
-      apogeeDelay = config.outPut2Delay;
-      break;
-    case 2:
-      timerEvent2_enable = true;
-      out2Delay = config.outPut2Delay;
-      pinOut2 = pyroOut2;
-      break;
-    case 4:
-      landingEvent_Enable = true;
-      landingDelay = config.outPut2Delay;
-      pinLanding[1] = pyroOut2;
-      break;
-    case 5:
-      liftOffEvent_Enable = true;
-      liftOffDelay = config.outPut2Delay;
-      pinLiftOff[1] = pyroOut2;
-      break;
-    default:
-      out2Enable = false;
-      break;
-  }
-
 }
 
+/*
+   setEventState(int pyroOut, boolean state)
+    Set the state of the output
+*/
 void setEventState(int pyroOut, boolean state)
 {
   if (pyroOut == pyroOut1)
@@ -462,10 +314,13 @@ void setEventState(int pyroOut, boolean state)
     SerialCom.println(F("Output2Fired"));
 #endif
   }
-
-
 }
 
+/*
+   SendTelemetry(long sampleTime, int freq)
+   Send telemety so that we can plot the flight
+
+*/
 void SendTelemetry(long sampleTime, int freq) {
   char altiTelem[150] = "";
   char temp[10] = "";
@@ -479,33 +334,17 @@ void SendTelemetry(long sampleTime, int freq) {
 
     //check apogee
     int ap = 0;
-    if (apogeeHasFired)
+    if (allApogeeFiredComplete)
       ap = 1;
 
     //check main
     int ma = 0;
-    if (mainHasFired)
+    if (allMainFiredComplete)
       ma = 1;
     int landed = 0;
-    if ( mainHasFired && currAltitude < 10)
+    if ( allMainFiredComplete && currAltitude < 10)
       landed = 1;
-    /*SerialCom.print(F("$telemetry,"));
-      SerialCom.print(currAltitude);
-      SerialCom.print(F(","));
-      SerialCom.print(li);
-      SerialCom.print(F(","));
-      SerialCom.print(ap);
-      SerialCom.print(F(","));
-      SerialCom.print(apogeeAltitude);
-      SerialCom.print(F(","));
-      SerialCom.print(ma);
-      SerialCom.print(F(","));
-      SerialCom.print(mainAltitude);
-      SerialCom.print(F(","));
-      SerialCom.print(landed);
-      SerialCom.print(F(","));
-      SerialCom.print(sampleTime);
-      SerialCom.print(F(","));*/
+
     strcat(altiTelem, "telemetry," );
     sprintf(temp, "%i,", currAltitude);
     strcat(altiTelem, temp);
@@ -523,38 +362,30 @@ void SendTelemetry(long sampleTime, int freq) {
     strcat(altiTelem, temp);
     sprintf(temp, "%i,", sampleTime);
     strcat(altiTelem, temp);
-    if (out1Enable) {
+    if (config.outPut1 != 3) {
       //check continuity
       val = digitalRead(pinChannel1Continuity);
       if (val == 0)
-        //SerialCom.print(0);
         strcat(altiTelem, "0,");
       else
-        //SerialCom.print(1);
         strcat(altiTelem, "1,");
     }
     else {
-      //SerialCom.print(-1);
       strcat(altiTelem, "-1,");
     }
     SerialCom.print(F(","));
-    if (out2Enable) {
+    if (config.outPut1 != 3) {
       //check continuity
       val = digitalRead(pinChannel2Continuity);
       delay(20);
       if (val == 0)
-        //SerialCom.print(0);
         strcat(altiTelem, "0,");
       else
-        //SerialCom.print(1);
         strcat(altiTelem, "1,");
     }
     else {
-      //SerialCom.print(-1);
       strcat(altiTelem, "-1,");
     }
-
-    //SerialCom.println(F(";"));
     unsigned int chk;
     chk = msgChk(altiTelem, sizeof(altiTelem));
     sprintf(temp, "%i", chk);
@@ -571,7 +402,9 @@ void loop()
 {
   MainMenu();
 }
-
+/*
+   Calculate the current velocity
+*/
 int currentVelocity(int prevTime, int curTime, int prevAltitude, int curAltitude)
 {
   int curSpeed = int ((curAltitude - prevAltitude) / ( curTime - prevTime));
@@ -584,55 +417,55 @@ int currentVelocity(int prevTime, int curTime, int prevAltitude, int curAltitude
 //================================================================
 void recordAltitude()
 {
-  exitRecording = false;
-  apogeeReadyToFire = false;
-  mainReadyToFire = false;
-  landingReadyToFire = false;
-  liftOffReadyToFire = false;
-  apogeeStartTime = 0;
-  mainStartTime = 0;
-  landingStartTime = 0;
-  liftOffStartTime = 0;
-  ignoreAltiMeasure = false;
+  ResetGlobalVar();
 
-  Event1Fired = false;
-  Event2Fired = false;
-  ApogeeFiredComplete = false;
-  MainFiredComplete = false;
-  LandingFiredComplete = false;
-  LiftOffFiredComplete = false;
-  landingHasFired = false;
-  liftOffHasFired = false;
-  apogeeHasFired = false;
-  mainHasFired = false;
+  boolean OutputFiredComplete[2] = {false, false};
+  int OutputDelay[2] = {0, 0};
+  OutputDelay[0] = config.outPut1Delay;
+  OutputDelay[1] = config.outPut2Delay;
 
-  if (out1Enable == false) Output1Fired = true;
-  if (out2Enable == false) Output2Fired = true;
+  // 0 = main 1 = drogue 2 = timer 4 = landing 5 = liftoff 3 = disable
+  int OutputType[2] = {3, 3};
+  OutputType[0] = config.outPut1;
+  OutputType[1] = config.outPut2;
 
+  int OutputPins[2] = { -1, -1};
+  if (config.outPut1 != 3)
+    OutputPins[0] = pyroOut1;
+  if (config.outPut2 != 3)
+    OutputPins[1] = pyroOut2;
+
+  boolean apogeeReadyToFire = false;
+  boolean mainReadyToFire = false;
+  boolean landingReadyToFire = false;
+  boolean liftOffReadyToFire = false;
+  unsigned long apogeeStartTime = 0;
+  unsigned long mainStartTime = 0;
+  unsigned long landingStartTime = 0;
+  unsigned long liftOffStartTime = 0;
+  boolean ignoreAltiMeasure = false;
+  unsigned long altitudeStartTime[] = {0, 0, 0, 0};
+
+  boolean liftOffHasFired = false;
+  //hold the state of all our outputs
+  boolean outputHasFired[2] = {false, false};
+
+  if (config.outPut1 == 3) Output1Fired = true;
+  if (config.outPut2 == 3) Output2Fired = true;
 
 #ifdef SERIAL_DEBUG
-  if (pinMain == -1) SerialCom.println(F("Main disable\n"));
-  if (pinApogee == -1) SerialCom.println(F("Apogee disable\n"));
-  if (pinOut1 == -1) SerialCom.println(F("pinOut1 disable\n"));
-  if (pinOut2 == -1) SerialCom.println(F("pinOut2 disable\n"));
-
   SerialCom.println(F("Config delay:"));
   SerialCom.println(config.outPut1Delay);
   SerialCom.println(config.outPut2Delay);
-
-
-  SerialCom.println(apogeeDelay);
-  SerialCom.println(mainDelay);
 #endif
 
   while (!exitRecording)
   {
-
     //read current altitude
     currAltitude = (ReadAltitude() - initialAltitude);
     if (liftOff)
       SendTelemetry(millis() - initialTime, 200);
-    if (( currAltitude > liftoffAltitude) && !liftOff && !mainHasFired )
+    if (( currAltitude > liftoffAltitude) && !liftOff && !allMainFiredComplete )
     {
       liftOff = true;
       SendTelemetry(0, 200);
@@ -655,12 +488,11 @@ void recordAltitude()
       {
         unsigned long currentTime;
         unsigned long diffTime;
-        unsigned long timerEvent1_startime;
 
         currAltitude = (ReadAltitude() - initialAltitude);
 
         currentTime = millis() - initialTime;
-        if (mainHasFired && !landingHasFired && !landingReadyToFire) {
+        if (allMainFiredComplete && !allLandingFiredComplete && !landingReadyToFire) {
 
           if (abs(currentVelocity(prevTime, currentTime, prevAltitude, currAltitude)) < 1  ) {
             //we have landed
@@ -678,85 +510,90 @@ void recordAltitude()
           liftOffStartTime = millis();
         }
 
-
-        if (liftOffReadyToFire)
-        {
-          if ((millis() - liftOffStartTime) >= liftOffDelay)
-          {
-            //fire liftOff
-            for (int lo = 0; lo < 2; lo++ ) {
-              fireOutput(pinLiftOff[lo], true);
+        if (!allLiftOffFiredComplete) {
+          //fire all liftoff that are ready
+          for (int li = 0; li < 2; li++ ) {
+            if (!outputHasFired[li] && ((millis() - liftOffStartTime) >= OutputDelay[li] ) && OutputType[li] == 5) {
+              digitalWrite(OutputPins[li], HIGH);
+              outputHasFired[li] = true;
             }
-
-            liftOffReadyToFire = false;
-            liftOffHasFired = true;
-            SendTelemetry(millis() - initialTime, 200);
           }
-        }
-
-        if (liftOffHasFired)
-        {
-          if ((millis() - (liftOffStartTime + liftOffDelay)) >= 1000 && !LiftOffFiredComplete)
-          {
-            for (int lo = 0; lo < 2; lo++ ) {
-              fireOutput(pinLiftOff[lo], false);
-              setEventState(pinLiftOff[lo], true);
+          for (int li = 0; li < 2; li++ ) {
+            if ((millis() - liftOffStartTime ) >= (1000 + OutputDelay[li])  && !OutputFiredComplete[li] && OutputType[li] == 5)
+            {
+              digitalWrite(OutputPins[li], LOW);
+              setEventState(OutputPins[li], true);
+              OutputFiredComplete[li] = true;
             }
-            LiftOffFiredComplete = true;
           }
-        }
 
+          allLiftOffFiredComplete = true;
 
-        if (timerEvent1_enable && !Event1Fired)
-        {
-          if (currentTime >= config.outPut1Delay)
-          {
-            //fire output pyroOut1
-            digitalWrite(pyroOut1, HIGH);
-            timerEvent1_startime = currentTime;
-            Event1Fired = true;
-#ifdef SERIAL_DEBUG
-            SerialCom.println(F("Fired 1st out"));
-#endif
+          for (int li = 0; li < 2; li++ ) {
+            if (!OutputFiredComplete[li] && OutputType[li] == 5)
+            {
+              allLiftOffFiredComplete = false;
+            }
           }
+          SendTelemetry(millis() - initialTime, 200);
         }
-        if (timerEvent1_enable && Event1Fired)
-        {
-          if ((currentTime - config.outPut1Delay) >= 1000 && Output1Fired == false)
-          {
-            //switch off output pyroOut1
-            digitalWrite(pyroOut1, LOW);
-            Output1Fired = true;
-#ifdef SERIAL_DEBUG
-            SerialCom.println(F("Finished Firing 1st out"));
-#endif
+        //altitude events
+        if (!allAltitudeFiredComplete) {
+          //fire all altitude that are ready
+          for (int al = 0; al < 4; al++ ) {
+            if (!outputHasFired[al] && ((currAltitude >= OutputDelay[al]) ) && OutputType[al] == 6) {
+              digitalWrite(OutputPins[al], HIGH);
+              outputHasFired[al] = true;
+              altitudeStartTime[al] = millis();
+            }
           }
-        }
-        if (timerEvent2_enable && !Event2Fired)
-        {
-          if (currentTime >= config.outPut2Delay)
-          {
-            //fire output pyroOut2
-            digitalWrite(pyroOut2, HIGH);
-            Event2Fired = true;
-#ifdef SERIAL_DEBUG
-            SerialCom.println(F("Fired 2nd out"));
-#endif
+          for (int al = 0; al < 4; al++ ) {
+            if (( millis()  >= (1000 + altitudeStartTime[al]))  && !OutputFiredComplete[al] && OutputType[al] == 6 && outputHasFired[al])
+            {
+              digitalWrite(OutputPins[al], LOW);
+              setEventState(OutputPins[al], true);
+              OutputFiredComplete[al] = true;
+            }
           }
-        }
-        if (timerEvent2_enable && Event2Fired)
-        {
-          if ((currentTime - config.outPut2Delay) >= 1000 && !Output2Fired)
-          {
-            //switch off output pyroOut2
-            digitalWrite(pyroOut2, LOW);
-            Output2Fired = true;
-#ifdef SERIAL_DEBUG
-            SerialCom.println(F("Finished Firing 2nd out"));
-#endif
-          }
-        }
 
+          allAltitudeFiredComplete = true;
+
+          for (int al = 0; al < 4; al++ ) {
+            if (!OutputFiredComplete[al] && OutputType[al] == 6)
+            {
+              allAltitudeFiredComplete = false;
+            }
+          }
+          SendTelemetry(millis() - initialTime, 200);
+        }
+        // timer events
+        if (!allTimerFiredComplete) {
+          //fire all timers that are ready
+          for (int ti = 0; ti < 4; ti++ ) {
+            if (!outputHasFired[ti] && ((currentTime >= OutputDelay[ti]) ) && OutputType[ti] == 2) {
+              digitalWrite(OutputPins[ti], HIGH);
+              outputHasFired[ti] = true;
+            }
+          }
+          for (int ti = 0; ti < 4; ti++ ) {
+            if ((currentTime  >= (1000 + OutputDelay[ti]))  && !OutputFiredComplete[ti] && OutputType[ti] == 2)
+            {
+              digitalWrite(OutputPins[ti], LOW);
+              setEventState(OutputPins[ti], true);
+              OutputFiredComplete[ti] = true;
+            }
+          }
+
+          allTimerFiredComplete = true;
+
+          for (int ti = 0; ti < 4; ti++ ) {
+            if (!OutputFiredComplete[ti] && OutputType[ti] == 2)
+            {
+              allTimerFiredComplete = false;
+            }
+          }
+          SendTelemetry(millis() - initialTime, 200);
+        }
 
         if (config.superSonicYesNo == 1)
         {
@@ -764,7 +601,7 @@ void recordAltitude()
           if (currentTime > 3000)
             ignoreAltiMeasure = false;
         }
-        if (currAltitude < lastAltitude && !apogeeHasFired && !ignoreAltiMeasure)
+        if (currAltitude < lastAltitude && !apogeeReadyToFire && !ignoreAltiMeasure)
         {
           measures = measures - 1;
           if (measures == 0)
@@ -780,118 +617,114 @@ void recordAltitude()
           lastAltitude = currAltitude;
           measures = config.nbrOfMeasuresForApogee;
         }
-        if (apogeeReadyToFire)
+        if (apogeeReadyToFire && !allApogeeFiredComplete)
         {
-          if ((millis() - apogeeStartTime) >= apogeeDelay)
-          {
-            //fire drogue
-            //digitalWrite(pinApogee, HIGH);
-            //setEventState(pinApogee, true);
-            for (int ap = 0; ap < 2; ap++ ) {
-              digitalWrite(pinApogee[ap], HIGH);
-              //setEventState(pinApogee[ap], true);
-            }
-#ifdef SERIAL_DEBUG
-            SerialCom.println(F("Apogee has fired"));
-#endif
-            apogeeReadyToFire = false;
-            apogeeHasFired = true;
-            SendTelemetry(millis() - initialTime, 200);
-          }
-        }
-        if (apogeeHasFired)
-        {
-          if ((millis() - (apogeeStartTime + apogeeDelay)) >= 1000 && !ApogeeFiredComplete )
-          {
-            for (int ap = 0; ap < 2; ap++ ) {
-              digitalWrite(pinApogee[ap], LOW);
-              setEventState(pinApogee[ap], true);
-            }
 
-            ApogeeFiredComplete = true;
+          //fire all drogues if delay ok
+          for (int ap = 0; ap < 2; ap++ ) {
+            if (!outputHasFired[ap] && ((millis() - apogeeStartTime) >= OutputDelay[ap]) && OutputType[ap] == 1) {
+              digitalWrite(OutputPins[ap], HIGH);
+              outputHasFired[ap] = true;
+            }
           }
+
+          for (int ap = 0; ap < 2; ap++ ) {
+            if ((millis() - apogeeStartTime ) >= (1000 + OutputDelay[ap]) && !OutputFiredComplete[ap] && OutputType[ap] == 1)
+            {
+              digitalWrite(OutputPins[ap], LOW);
+              setEventState(OutputPins[ap], true);
+              OutputFiredComplete[ap] = true;
+            }
+          }
+
+          allApogeeFiredComplete = true;
+
+          for (int ap = 0; ap < 2; ap++ ) {
+            if (!OutputFiredComplete[ap] && OutputType[ap] == 1)
+            {
+              allApogeeFiredComplete = false;
+            }
+          }
+          SendTelemetry(millis() - initialTime, 200);
         }
-        if ((currAltitude  < mainDeployAltitude) && apogeeHasFired && !mainHasFired)
+
+
+        if ((currAltitude  < mainDeployAltitude) && allApogeeFiredComplete && !mainReadyToFire && !allMainFiredComplete)
         {
           // Deploy main chute  X meters or feet  before landing...
-          //digitalWrite(pinApogee, LOW);
-#ifdef SERIAL_DEBUG
-          SerialCom.println(F("Apogee firing complete"));
-#endif
           mainReadyToFire = true;
 #ifdef SERIAL_DEBUG
           SerialCom.println(F("preparing main"));
 #endif
           mainStartTime = millis();
-
           mainAltitude = currAltitude;
 #ifdef SERIAL_DEBUG
           SerialCom.println(F("main altitude"));
-
           SerialCom.println(mainAltitude);
 #endif
         }
-        if (mainReadyToFire)
+        if (mainReadyToFire && !allMainFiredComplete)
         {
-          if ((millis() - mainStartTime) >= mainDelay)
-          {
-            //fire main
+          //fire main
 #ifdef SERIAL_DEBUG
-            SerialCom.println(F("firing main"));
+          SerialCom.println(F("firing main"));
 #endif
-            //digitalWrite(pinMain, HIGH);
-            for (int ma = 0; ma < 2; ma++ ) {
-              digitalWrite(pinMain[ma], HIGH);
+          for (int ma = 0; ma < 2; ma++ ) {
+            if (!outputHasFired[ma] && ((millis() - mainStartTime) >= OutputDelay[ma]) && OutputType[ma] == 0) {
+              digitalWrite(OutputPins[ma], HIGH);
+              outputHasFired[ma] = true;
             }
-            mainReadyToFire = false;
-            mainHasFired = true;
-            SendTelemetry(millis() - initialTime, 200);
           }
+
+
+          for (int ma = 0; ma < 2; ma++ ) {
+            if ((millis() - mainStartTime ) >= (1000 + OutputDelay[ma]) && !OutputFiredComplete[ma] && OutputType[ma] == 0)
+            {
+              digitalWrite(OutputPins[ma], LOW);
+              setEventState(OutputPins[ma], true);
+              OutputFiredComplete[ma] = true;
+            }
+          }
+          allMainFiredComplete = true;
+
+          for (int ma = 0; ma < 2; ma++ ) {
+            if (!OutputFiredComplete[ma] && OutputType[ma] == 0)
+            {
+              allMainFiredComplete = false;
+            }
+          }
+          SendTelemetry(millis() - initialTime, 200);
         }
 
-        if (mainHasFired)
-        {
 
-          if ((millis() - (mainStartTime + mainDelay)) >= 1000 && MainFiredComplete == false)
-          {
-            for (int ma = 0; ma < 2; ma++ ) {
-              digitalWrite(pinMain[ma], LOW);
-              setEventState(pinMain[ma], true);
+        if (landingReadyToFire && !allLandingFiredComplete) {
+          //fire all landing that are ready
+          for (int la = 0; la < 4; la++ ) {
+            if (!outputHasFired[la] && ((millis() - landingStartTime) >= OutputDelay[la] ) && OutputType[la] == 4) {
+              digitalWrite(OutputPins[la], HIGH);
+              outputHasFired[la] = true;
             }
-#ifdef SERIAL_DEBUG
-            SerialCom.println("Main fired");
-#endif
-            MainFiredComplete = true;
           }
-        }
-        if (landingReadyToFire)
-        {
-          if ((millis() - landingStartTime) >= landingDelay)
-          {
-            //fire landing
-            for (int la = 0; la < 2; la++ ) {
-              fireOutput(pinLanding[la], true);
+          for (int la = 0; la < 4; la++ ) {
+            if ((millis() - landingStartTime ) >= (1000 + OutputDelay[la])  && !OutputFiredComplete[la] && OutputType[la] == 4)
+            {
+              digitalWrite(OutputPins[la], LOW);
+              setEventState(OutputPins[la], true);
+              OutputFiredComplete[la] = true;
             }
-
-            landingReadyToFire = false;
-            landingHasFired = true;
-            SendTelemetry(millis() - initialTime, 200);
           }
-        }
 
-        if (landingHasFired)
-        {
-          if ((millis() - (landingStartTime + landingDelay)) >= 1000 && !LandingFiredComplete)
-          {
-            for (int la = 0; la < 2; la++ ) {
-              fireOutput(pinLanding[la], false);
-              setEventState(pinLanding[la], true);
+          allLandingFiredComplete = true;
+
+          for (int la = 0; la < 4; la++ ) {
+            if (!OutputFiredComplete[la] && OutputType[la] == 4)
+            {
+              allLandingFiredComplete = false;
             }
-            LandingFiredComplete = true;
           }
+          SendTelemetry(millis() - initialTime, 200);
         }
-
-        if ((MainFiredComplete && currAltitude < 10) && LandingFiredComplete)
+        if ((allMainFiredComplete && currAltitude < 10) && allLandingFiredComplete)
         {
           liftOff = false;
           SendTelemetry(millis() - initialTime, 200);
@@ -905,7 +738,6 @@ void recordAltitude()
           exitRecording = true;
           SendTelemetry(millis() - initialTime, 200);
         }
-
       }
     }
   }
@@ -944,18 +776,16 @@ void MainMenu()
         SendTelemetry(millis() - initialTime, 200);
       if (( currAltitude > liftoffAltitude) != true)
       {
-        continuityCheckNew();
+        continuityCheckAsync();
         SendTelemetry(0, 200);
-
       }
       else
       {
         recordAltitude();
       }
       long savedTime = millis();
-      while (apogeeHasFired  && mainHasFired )
+      while (allApogeeFiredComplete  && allMainFiredComplete )
       {
-
         // check if we have anything on the serial port
         if (SerialCom.available())
         {
@@ -1063,7 +893,7 @@ void interpretCommandBuffer(char *commandbuffer) {
   //get all flight data
   else if (commandbuffer[0] == 'a')
   {
-    SerialCom.print(F("Not emplemented\n"));
+    SerialCom.print(F("Not implemented\n"));
     SerialCom.print(F("$OK;\n"));
   }
   //get altimeter config
@@ -1086,8 +916,6 @@ void interpretCommandBuffer(char *commandbuffer) {
     }
     else {
       SerialCom.print(F("$KO;\n"));
-      readAltiConfig();
-      initAlti();
     }
   }
   //reset alti config
@@ -1121,6 +949,7 @@ void interpretCommandBuffer(char *commandbuffer) {
     //reset config
     defaultConfig();
     writeConfigStruc();
+    initAlti();
     SerialCom.print(F("config reseted\n"));
   }
   else if (commandbuffer[0] == 'i')
@@ -1183,6 +1012,13 @@ void interpretCommandBuffer(char *commandbuffer) {
     }
     SerialCom.print(F("$OK;\n"));
   }
+  // send test tram
+  else if (commandbuffer[0] == 'o')
+  { 
+    SerialCom.print(F("$start;\n"));
+    sendTestTram();
+    SerialCom.print(F("$end;\n"));
+  }
   else if (commandbuffer[0] == ' ')
   {
     SerialCom.print(F("$K0;\n"));
@@ -1193,14 +1029,16 @@ void interpretCommandBuffer(char *commandbuffer) {
     // Serial.println(F("Unknown command" ));
     SerialCom.print(F("$UNKNOWN;"));
     SerialCom.println(commandbuffer[0]);
-
   }
 }
 
 void resetFlight() {
   // re-nitialise all flight related global variables
-  apogeeHasFired = false;
-  mainHasFired = false;
+  allApogeeFiredComplete  = false;
+  allMainFiredComplete = false;
+  allTimerFiredComplete = false;
+  allLiftOffFiredComplete = false;
+  allLandingFiredComplete = false;
   liftOff = false;
   Output1Fired = false;
   Output2Fired = false;
@@ -1213,4 +1051,24 @@ void fireOutput(int pin, boolean fire) {
     digitalWrite(pin, HIGH );
   else
     digitalWrite(pin, LOW );
+}
+
+/*
+    Test tram
+*/
+void sendTestTram() {
+
+  char altiTest[100] = "";
+  char temp[10] = "";
+
+  strcat(altiTest, "testTrame," );
+  strcat(altiTest, "Bear altimeters are the best!!!!,");
+  unsigned int chk;
+  chk = msgChk(altiTest, sizeof(altiTest));
+  sprintf(temp, "%i", chk);
+  strcat(altiTest, temp);
+  strcat(altiTest, ";\n");
+  SerialCom.print("$");
+  SerialCom.print(altiTest);
+
 }
