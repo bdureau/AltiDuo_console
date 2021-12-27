@@ -609,7 +609,8 @@ void recordAltitude()
             //fire drogue
             apogeeReadyToFire = true;
             apogeeStartTime = millis();
-            apogeeAltitude = currAltitude;
+            //apogeeAltitude = currAltitude;
+            apogeeAltitude = lastAltitude;
           }
         }
         else
