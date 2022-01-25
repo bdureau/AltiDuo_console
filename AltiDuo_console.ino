@@ -35,7 +35,8 @@
 #include "config.h"
 #include <Wire.h> //I2C library
 
-#include <Adafruit_BMP085.h>
+//#include <Adafruit_BMP085.h>
+#include "Bear_BMP085.h"
 
 #include "kalman.h"
 #include "beepfunc.h"
@@ -45,7 +46,8 @@
 //////////////////////////////////////////////////////////////////////
 int mode = 0; //0 = read; 1 = write;
 
-Adafruit_BMP085 bmp;
+//Adafruit_BMP085 bmp;
+BMP085 bmp;
 
 //ground level altitude
 long initialAltitude;
@@ -847,35 +849,20 @@ void MainMenu()
 
 void interpretCommandBuffer(char *commandbuffer) {
   SerialCom.println((char*)commandbuffer);
-  //this will erase all flight
-  if (commandbuffer[0] == 'e')
+    //get all flight data
+   if (commandbuffer[0] == 'a')
   {
-    SerialCom.println(F("Not implemented"));
+    SerialCom.print(F("Not implemented\n"));
     SerialCom.print(F("$OK;\n"));
   }
-  //this will read one flight
-  else if (commandbuffer[0] == 'r')
+  //get altimeter config
+  else if (commandbuffer[0] == 'b')
   {
-    SerialCom.println(F("Not implemented"));
-    SerialCom.print(F("$OK;\n"));
-  }
-  // Recording
-  else if (commandbuffer[0] == 'w')
-  {
-    SerialCom.println(F("Not implemented \n"));
-    SerialCom.print(F("$OK;\n"));
-  }
-  //Number of flight
-  else if (commandbuffer[0] == 'n')
-  {
-    SerialCom.println(F("Not implemented\n"));
-    SerialCom.print(F("$OK;\n"));
-  }
-  //list all flights
-  else if (commandbuffer[0] == 'l')
-  {
-    SerialCom.println(F("Not implemented\n"));
-    SerialCom.print(F("$OK;\n"));
+    SerialCom.print(F("$start;\n"));
+
+    printAltiConfig();
+
+    SerialCom.print(F("$end;\n"));
   }
   //toggle continuity on and off
   else if (commandbuffer[0] == 'c')
@@ -891,40 +878,18 @@ void interpretCommandBuffer(char *commandbuffer) {
       SerialCom.println(F("Continuity on \n"));
     }
   }
-  //get all flight data
-  else if (commandbuffer[0] == 'a')
-  {
-    SerialCom.print(F("Not implemented\n"));
-    SerialCom.print(F("$OK;\n"));
-  }
-  //get altimeter config
-  else if (commandbuffer[0] == 'b')
-  {
-    SerialCom.print(F("$start;\n"));
-
-    printAltiConfig();
-
-    SerialCom.print(F("$end;\n"));
-  }
-  //write altimeter config
-  else if (commandbuffer[0] == 's')
-  {
-    if (writeAltiConfig(commandbuffer)) {
-
-      SerialCom.print(F("$OK;\n"));
-      readAltiConfig();
-      initAlti();
-    }
-    else {
-      SerialCom.print(F("$KO;\n"));
-    }
-  }
-  //reset alti config
+   //reset alti config
   else if (commandbuffer[0] == 'd')
   {
     defaultConfig();
     writeConfigStruc();
     initAlti();
+  }
+  //this will erase all flight
+  else if (commandbuffer[0] == 'e')
+  {
+    SerialCom.println(F("Not implemented"));
+    SerialCom.print(F("$OK;\n"));
   }
   //FastReading
   else if (commandbuffer[0] == 'f')
@@ -945,15 +910,7 @@ void interpretCommandBuffer(char *commandbuffer) {
     //FastReading = false;
     SerialCom.print(F("$OK;\n"));
   }
-  else if (commandbuffer[0] == 't')
-  {
-    //reset config
-    defaultConfig();
-    writeConfigStruc();
-    initAlti();
-    SerialCom.print(F("config reseted\n"));
-  }
-  else if (commandbuffer[0] == 'i')
+   else if (commandbuffer[0] == 'i')
   {
     //exit continuity mode
   }
@@ -981,17 +938,10 @@ void interpretCommandBuffer(char *commandbuffer) {
       }
     }
   }
-  //telemetry on/off
-  else if (commandbuffer[0] == 'y')
+  //list all flights
+  else if (commandbuffer[0] == 'l')
   {
-    if (commandbuffer[1] == '1') {
-      SerialCom.print(F("Telemetry enabled\n"));
-      telemetryEnable = true;
-    }
-    else {
-      SerialCom.print(F("Telemetry disabled\n"));
-      telemetryEnable = false;
-    }
+    SerialCom.println(F("Not implemented\n"));
     SerialCom.print(F("$OK;\n"));
   }
   //mainloop on/off
@@ -1013,6 +963,12 @@ void interpretCommandBuffer(char *commandbuffer) {
     }
     SerialCom.print(F("$OK;\n"));
   }
+  //Number of flight
+  else if (commandbuffer[0] == 'n')
+  {
+    SerialCom.println(F("Not implemented\n"));
+    SerialCom.print(F("$OK;\n"));
+  }
   // send test tram
   else if (commandbuffer[0] == 'o')
   { 
@@ -1020,11 +976,75 @@ void interpretCommandBuffer(char *commandbuffer) {
     sendTestTram();
     SerialCom.print(F("$end;\n"));
   }
+  //altimeter config param
+  //write  config
+  else if (commandbuffer[0] == 'p')
+  {
+    if (writeAltiConfigV2(commandbuffer)) {
+      SerialCom.print(F("$OK;\n"));
+    }
+    else
+      SerialCom.print(F("$KO;\n"));
+  }
+  else if (commandbuffer[0] == 'q')
+  {
+    writeConfigStruc();
+    readAltiConfig();
+    initAlti();
+    SerialCom.print(F("$OK;\n"));
+  }
+  //this will read one flight
+  else if (commandbuffer[0] == 'r')
+  {
+    SerialCom.println(F("Not implemented"));
+    SerialCom.print(F("$OK;\n"));
+  }
+  //write altimeter config
+  else if (commandbuffer[0] == 's')
+  {
+   /* if (writeAltiConfig(commandbuffer)) {
+
+      SerialCom.print(F("$OK;\n"));
+      readAltiConfig();
+      initAlti();
+    }
+    else {
+      SerialCom.print(F("$KO;\n"));
+    }*/
+    SerialCom.println(F("Not implemented"));
+    SerialCom.print(F("$OK;\n"));
+  }
+  else if (commandbuffer[0] == 't')
+  {
+    //reset config
+    defaultConfig();
+    writeConfigStruc();
+    initAlti();
+    SerialCom.print(F("config reseted\n"));
+  }
+  // Recording
+  else if (commandbuffer[0] == 'w')
+  {
+    SerialCom.println(F("Not implemented \n"));
+    SerialCom.print(F("$OK;\n"));
+  }
+  //telemetry on/off
+  else if (commandbuffer[0] == 'y')
+  {
+    if (commandbuffer[1] == '1') {
+      SerialCom.print(F("Telemetry enabled\n"));
+      telemetryEnable = true;
+    }
+    else {
+      SerialCom.print(F("Telemetry disabled\n"));
+      telemetryEnable = false;
+    }
+    SerialCom.print(F("$OK;\n"));
+  }
   else if (commandbuffer[0] == ' ')
   {
     SerialCom.print(F("$K0;\n"));
   }
-
   else
   {
     // Serial.println(F("Unknown command" ));
