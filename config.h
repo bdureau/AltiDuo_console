@@ -25,7 +25,7 @@
 //////////// do not change anything after unless you know what you are doing /////////////////////
 
 #define MAJOR_VERSION 1
-#define MINOR_VERSION 7
+#define MINOR_VERSION 8
 #define CONFIG_START 32
 
 
@@ -74,6 +74,9 @@ struct ConfigStruct {
   int outPut4Delay;           // unused but left for compatibility
   int liftOffAltitude;        //Lift Altitude in meters
   int batteryType;            // 0= Unknown, 1= "2S (7.4 Volts)", 2 = "9 Volts",3 = "3S (11.1 Volts)
+  int recordingTimeout;       // in Seconds
+  int altiID;
+  int useTelemetryPort;
   int cksum;  
 };
 extern ConfigStruct config;
@@ -81,7 +84,6 @@ extern ConfigStruct config;
 extern void defaultConfig();
 extern boolean readAltiConfig();
 extern int getOutPin(int );
-//extern bool writeAltiConfig( char * );
 extern bool writeAltiConfigV2( char * );
 extern void printAltiConfig();
 extern void writeConfigStruc();

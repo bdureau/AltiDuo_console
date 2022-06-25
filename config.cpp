@@ -37,8 +37,12 @@ void defaultConfig()
   config.outPut4Delay = 0;
   config.liftOffAltitude = 10;
   config.batteryType = 0;
+  config.recordingTimeout = 120;
+  config.altiID = 0;
+  config.useTelemetryPort =0;
   config.cksum = CheckSumConf(config);
 }
+
 boolean readAltiConfig() {
   //set the config to default values so that if any have not been configured we can use the default ones
   defaultConfig();
@@ -60,131 +64,7 @@ boolean readAltiConfig() {
   write the config received by the console
 
 */
-/*bool writeAltiConfig( char *p ) {
 
-  char *str;
-  int i = 0;
-  int strChk = 0;
-  char msg[100] = "";
-
-  while ((str = strtok_r(p, ",", &p)) != NULL) // delimiter is the comma
-  {
-    //SerialCom.println(str);
-    switch (i)
-    {
-      case 1:
-        config.unit = atoi(str);
-        strcat(msg, str);
-        break;
-      case 2:
-        config.beepingMode = atoi(str);
-        strcat(msg, str);
-        break;
-      case 3:
-        config.outPut1 = atoi(str);
-        strcat(msg, str);
-        break;
-      case 4:
-        config.outPut2 = atoi(str);
-        strcat(msg, str);
-        break;
-      case 5:
-        config.outPut3 = atoi(str);
-        strcat(msg, str);
-        break;
-      case 6:
-        config.mainAltitude = atoi(str);
-        strcat(msg, str);
-        break;
-      case 7:
-        config.superSonicYesNo = atoi(str);
-        strcat(msg, str);
-        break;
-      case 8:
-        config.outPut1Delay = atol(str);
-        strcat(msg, str);
-        break;
-      case 9:
-        config.outPut2Delay = atol(str);
-        strcat(msg, str);
-        break;
-      case 10:
-        config.outPut3Delay = atol(str);
-        strcat(msg, str);
-        break;
-      case 11:
-        config.beepingFrequency = atoi(str);
-        strcat(msg, str);
-        break;
-      case 12:
-        config.nbrOfMeasuresForApogee = atoi(str);
-        strcat(msg, str);
-        break;
-      case 13:
-        config.endRecordAltitude = atol(str);
-        strcat(msg, str);
-        break;
-      case 14:
-        config.recordTemperature = atoi(str);
-        strcat(msg, str);
-        break;
-      case 15:
-        config.superSonicDelay = atoi(str);
-        strcat(msg, str);
-        break;
-      case 16:
-        config.connectionSpeed = atol(str);
-        strcat(msg, str);
-        break;
-      case 17:
-        config.altimeterResolution = atoi(str);
-        strcat(msg, str);
-        break;
-      case 18:
-        config.eepromSize = atoi(str); // unused but left for compatibility
-        strcat(msg, str);
-        break;
-      case 19:
-        config.noContinuity = atoi(str);
-        strcat(msg, str);
-        break;
-      case 20:
-        config.outPut4 = atoi(str); // unused but left for compatibility
-        strcat(msg, str);
-        break;
-      case 21:
-        config.outPut4Delay = atol(str); // unused but left for compatibility
-        strcat(msg, str);
-        break;
-      case 22:
-        config.liftOffAltitude = atoi(str);
-        strcat(msg, str);
-        break;
-      case 23:
-        config.batteryType = atoi(str);
-        strcat(msg, str);
-        break;
-      case 24:
-        //our checksum
-        strChk = atoi(str);
-        break;
-    }
-    i++;
-
-  }
-//we have a partial config
-  if (i<23)
-    return false;
-
-  if(msgChk(msg, sizeof(msg)) != strChk)
-    return false;  
-    // add checksum
-  config.cksum = CheckSumConf(config);
-
-  writeConfigStruc();
-   return true;
-}
-*/
 bool writeAltiConfigV2( char *p ) {
 
   char *str;
@@ -289,7 +169,15 @@ bool writeAltiConfigV2( char *p ) {
       case 23:
         config.batteryType = (int) commandVal;
         break;
-     
+      case 24:
+        config.recordingTimeout = (int) commandVal;
+        break;
+      case 25:
+        config.altiID = (int)commandVal;
+        break;
+      case 26:
+        config.useTelemetryPort = (int)commandVal;  
+        break;     
     }
 
   // add checksum
