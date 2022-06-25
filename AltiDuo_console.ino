@@ -20,7 +20,13 @@
   The main continuity test is connected to pin D10
   The apogee continuity test is connected to pin D11
   The speaker/buzzer is connected to pin D12
+  
+  To compile it:
+  ====================
+  Use the arduino environement and select the Arduino Uno board. Note that if you are using the Android console just upload a pre-compiled firmware.
 
+  Changes:
+  ========
   Major changes on  version 1.5
   Added support so that it can use the Android console
   Major changes on  version 1.6
@@ -29,6 +35,8 @@
   Allow multiple outputs of the main type
   allow events
   major re-write
+  Major changes on  version 1.8
+  Compatibility with the latest console app
 */
 
 //altimeter configuration lib
