@@ -1,4 +1,4 @@
-# AltiDuo_console
+# AltiDuo console (firmware)
 AltiDuo that can be configured using the Bearconsole Android application
 <img src="/pictures/altiDuo_kit.jpg" width="49%"> 
 # Talking to the altimeter using command line
